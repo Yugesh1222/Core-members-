@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Barcode Attendance</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  background:#000;
+  color:white;
+  font-family:Arial;
+  display:flex;
+  justify-content:center;
+  padding:15px;
+}
+.container{
+  width:100%;
+  max-width:900px;
+}
+.box{
+  background:#111;
+  padding:20px;
+  border-radius:16px;
+  margin-top:15px;
+}
+input,button{
+  width:100%;
+  padding:12px;
+  margin:6px 0;
+  border-radius:6px;
+  border:none;
+}
+button{
+  font-weight:bold;
+  cursor:pointer;
+}
+.green{background:#13ff4b;color:#000;}
+.red{background:#ff3d3d;}
+.blue{background:#1d8cff;}
+table{
+  width:100%;
+  margin-top:10px;
+  border-collapse:collapse;
+}
+th,td{
+  border:1px solid #333;
+  padding:8px;
+  text-align:center;
+}
+video{
+  width:100%;
+  border-radius:12px;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h2>📚 Barcode Attendance System</h2>
+
+<div class="box">
+<h3>Upload Students Excel</h3>
+<input type="file" id="excelFile">
+<button class="green" onclick="saveExcel()">Save Students</button>
+<p id="msg"></p>
+</div>
+
+<div class="box">
+<h3>Scan / Enter Roll Number</h3>
+
+<video id="preview"></video>
+<button class="blue" onclick="startScanner()">Start Scanner</button>
+
+<input type="text" id="roll" placeholder="Scan / Enter Roll Number" oninput="findStudent()">
+<input type="text" id="name" placeholder="Student Name" readonly>
+<input type="text" id="class" placeholder="Class & Section" readonly>
+
+<button class="blue" onclick="markAttendance()">Mark Attendance</button>
+<button class="red" onclick="clearAttendance()">Clear Attendance</button>
+</div>
+
+<div class="box">
+<h3>Attendance List</h3>
+<table>
+<thead>
+<tr>
+<th>Roll</th>
+<th>Name</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody id="list"></tbody>
+</table>
+
+<button class="green" onclick="downloadExcel()">Download Excel</button>
+</div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@latest"></script>
+
+<script>
+
+let students = JSON.parse(localStorage.getItem("students")) || [];
+let attendance = JSON.parse(localStorage.getItem("attendance")) || [];
+showAttendance();
+
+function saveExcel(){
+ let file = document.getElementById("excelFile").files[0];
+ if(!file) return alert("Select excel file");
+
+ let reader = new FileReader();
+ reader.onload = e=>{
+ let data = new Uint8Array(e.target.result);
+ let wb = XLSX.read(data,{type:"array"});
+ let sheet = wb.Sheets[wb.SheetNames[0]];
+ students = XLSX.utils.sheet_to_json(sheet);
+
+ localStorage.setItem("students",JSON.stringify(students));
+ document.getElementById("msg").innerHTML="Students Saved Successfully 🎉";
+ }
+ reader.readAsArrayBuffer(file);
+}
+
+function findStudent(){
+ let roll = document.getElementById("roll").value.trim().toUpperCase();
+ let s = students.find(x => String(x.RollNumber).toUpperCase() === roll);
+
+ if(s){
+ document.getElementById("name").value = s.Name || "";
+ document.getElementById("class").value = (s.Class || "") + " " + (s.Section || "");
+ }
+}
+
+function markAttendance(){
+ let roll = document.getElementById("roll").value.trim();
+ if(!roll) return alert("Scan or Enter Roll Number");
+
+ if(attendance.find(a=>a.Roll===roll)){
+ alert("Already Marked");
+ return;
+ }
+
+ attendance.push({
+ Roll:roll,
+ Name:document.getElementById("name").value,
+ Class:document.getElementById("class").value
+ });
+
+ localStorage.setItem("attendance",JSON.stringify(attendance));
+ showAttendance();
+
+ document.getElementById("roll").value="";
+ document.getElementById("name").value="";
+ document.getElementById("class").value="";
+}
+
+function showAttendance(){
+ document.getElementById("list").innerHTML=
+ attendance.map(a=>`
+ <tr>
+ <td>${a.Roll}</td>
+ <td>${a.Name}</td>
+ <td>${a.Class}</td>
+ </tr>`).join("");
+}
+
+function clearAttendance(){
+ if(!confirm("Clear All Attendance?")) return;
+ attendance=[];
+ localStorage.removeItem("attendance");
+ showAttendance();
+}
+
+// DOWNLOAD
+function downloadExcel(){
+ if(attendance.length==0) return alert("No Data");
+
+ let wb = XLSX.utils.book_new();
+ let ws = XLSX.utils.json_to_sheet(attendance);
+ XLSX.utils.book_append_sheet(wb,ws,"Attendance");
+ XLSX.writeFile(wb,"Attendance.xlsx");
+}
+
+
+// ZXING BARCODE SCANNER
+let codeReader = new ZXing.BrowserBarcodeReader();
+
+async function startScanner(){
+ let video = document.getElementById("preview");
+
+ try{
+ const stream = await navigator.mediaDevices.getUserMedia({
+ video:{facingMode:"environment"}
+ });
+
+ video.srcObject = stream;
+ video.setAttribute("playsinline",true);
+ video.play();
+
+ codeReader.decodeFromVideoDevice(null, video, (result)=>{
+ if(result){
+ document.getElementById("roll").value=result.text;
+ findStudent();
+ }
+ });
+
+ }catch(err){
+ alert("Camera Permission Denied");
+ }
+
+}
+
+</script>
+
+</body>
+</html>

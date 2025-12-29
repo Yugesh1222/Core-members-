@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Lucafama Dashboard</title>
+<style>
+body{font-family:Poppins;background:#f5f5f5;text-align:center}
+.card{
+ width:300px;margin:120px auto;background:white;
+ padding:25px;border-radius:12px;
+ box-shadow:0 5px 20px rgba(0,0,0,0.2);
+}
+button{
+ padding:12px 20px;border-radius:8px;border:none;
+ background:#000;color:white;cursor:pointer;margin:5px;
+}
+</style>
+</head>
+<body>
+
+<div class="card" id="box">
+  Checking login...
+</div>
+
+<script>
+const box = document.getElementById("box");
+
+// check login values
+let logged =
+ localStorage.getItem("isLoggedIn") === "true" ||
+ localStorage.getItem("logged") === "true";
+
+if(!logged){
+ box.innerHTML = `
+  <h2>Login Required</h2>
+  <p>Please login first</p>
+  <button onclick="goLogin()">Go To Login</button>
+ `;
+} else {
+ const name = localStorage.getItem("userName") || "Member";
+
+ box.innerHTML = `
+  <h2>Lucafama Dashboard</h2>
+  <p>Welcome ${name}</p>
+
+  <button onclick="window.location='attendance.html'">
+   Open Attendance
+  </button>
+
+  <button onclick="logout()">Logout</button>
+ `;
+}
+
+function goLogin(){
+  window.location = "login.html";
+}
+
+function logout(){
+ localStorage.clear();
+ window.location="login.html";
+}
+</script>
+
+</body>
+</html>
